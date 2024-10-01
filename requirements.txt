@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+pymongo  # If you are using MongoDB
+python-dotenv  # If you're using a .env file
