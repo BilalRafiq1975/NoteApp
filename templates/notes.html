@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MyNotes - Take Your Notes Easily</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #e9ecef;
+            color: #212529;
+        }
+
+        .navbar {
+            background-color: #343a40;
+        }
+
+        .navbar-brand,
+        .nav-link {
+            color: #f8f9fa !important;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+
+        .btn-logout {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-logout:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+        .logout-container {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 3rem;
+            height: 3rem;
+            border: 0.3rem solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 0.8s linear infinite;
+            margin-top: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .view-toggle {
+            cursor: pointer;
+            color: #007bff;
+        }
+
+        .modal-header {
+            background-color: #343a40;
+            color: #f8f9fa;
+        }
+
+        .btn-logout-confirm {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-logout-confirm:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Welcome, {{ username }}!</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <form class="d-flex navbar-form" role="search" method="get" action="/notes">
+                <input class="form-control me-2" type="search" name="query" placeholder="Search by title or description"
+                       aria-label="Search">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button>
+                <select class="form-select ms-2" name="important_filter">
+                    <option value="">All</option>
+                    <option value="important">Important</option>
+                    <option value="not_important">Not Important</option>
+                </select>
+            </form>
+        </div>
+    </div>
+    <!-- Logout Button to Trigger Modal -->
+    <form class="d-flex logout-container">
+        <button type="button" class="btn btn-logout" data-bs-toggle="modal" data-bs-target="#logoutModal">
+            Logout
+        </button>
+    </form>
+</nav>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to log out, <strong>{{ username }}</strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <!-- Form to Logout -->
+                <form action="/logout" method="post">
+                    <button type="submit" class="btn btn-logout-confirm">Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Start Adding Your Notes Now!</h1>
+
+    <form id="noteForm" action="/notes" method="post">
+        <div class="mb-3">
+            <label for="title" class="form-label">Note Title</label>
+            <input type="text" class="form-control" name="title" id="title" required>
+        </div>
+        <div class="mb-3">
+            <label for="desc" class="form-label">Note Description</label>
+            <input type="text" class="form-control" name="desc" id="desc" required>
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" name="important" id="importantCheck">
+            <label class="form-check-label" for="importantCheck">Mark as Important</label>
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" name="pinned" id="pinnedCheck">
+            <label class="form-check-label" for="pinnedCheck">Pin this Note</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <div class="loading-spinner" id="loading-spinner"></div>
+    </form>
+</div>
+
+<div class="container mt-5">
+    <h2>Your Notes</h2>
+    <div class="mb-3">
+        <span class="view-toggle" onclick="toggleView()">Switch to Grid View</span>
+    </div>
+
+    {% if newDocs and newDocs|length > 0 %}
+        <div id="notes-container" class="row">
+        {% for item in newDocs %}
+            <div class="col-md-4 mb-4 note-item">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ item.title }}</h5>
+                        <p class="card-text">{{ item.desc }}</p>
+                        <p class="card-text">
+                            <small class="text-muted"><i class="fas fa-star"></i> {{ item.important and "Important" or "Not Important" }}</small> |
+                            <small class="text-muted"><i class="fas fa-thumbtack"></i> {{ item.pinned and "Pinned" or "" }}</small>
+                        </p>
+                        <form id="delete-form-{{ item._id }}" action="/notes/delete/{{ item._id }}" method="post" class="d-inline">
+                            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteConfirmation('{{ item._id }}')">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#updateModal-{{ item._id }}">
+                            <i class="fas fa-edit"></i> Update
+                        </button>
+
+                        <!-- Update Modal -->
+                        <div class="modal fade" id="updateModal-{{ item._id }}" tabindex="-1"
+                             aria-labelledby="updateModalLabel-{{ item._id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="updateModalLabel-{{ item._id }}">Update Note</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form action="/notes/update/{{ item._id }}" method="post">
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label for="title-{{ item._id }}" class="form-label">Title</label>
+                                                <input type="text" class="form-control" name="title"
+                                                       id="title-{{ item._id }}" value="{{ item.title }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="desc-{{ item._id }}" class="form-label">Description</label>
+                                                <input type="text" class="form-control" name="desc"
+                                                       id="desc-{{ item._id }}" value="{{ item.desc }}" required>
+                                            </div>
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input" name="important"
+                                                       id="importantCheck-{{ item._id }}" {{ item.important and 'checked' }}>
+                                                <label class="form-check-label" for="importantCheck-{{ item._id }}">Mark as Important</label>
+                                            </div>
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input" name="pinned"
+                                                       id="pinnedCheck-{{ item._id }}" {{ item.pinned and 'checked' }}>
+                                                <label class="form-check-label" for="pinnedCheck-{{ item._id }}">Pin this Note</label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Update</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <strong>Info:</strong> No notes found.
+        </div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
+<script>
+    function toggleView() {
+        const container = document.getElementById('notes-container');
+        const toggleButton = document.querySelector('.view-toggle');
+
+        if (container.classList.contains('row')) {
+            container.classList.remove('row');
+            container.classList.add('grid');
+            toggleButton.innerText = 'Switch to List View';
+        } else {
+            container.classList.remove('grid');
+            container.classList.add('row');
+            toggleButton.innerText = 'Switch to Grid View';
+        }
+    }
+
+    function showDeleteConfirmation(noteId) {
+        if (confirm("Are you sure you want to delete this note?")) {
+            document.getElementById(`delete-form-${noteId}`).submit();
+        }
+    }
+</script>
+
+</body>
+
+</html>
